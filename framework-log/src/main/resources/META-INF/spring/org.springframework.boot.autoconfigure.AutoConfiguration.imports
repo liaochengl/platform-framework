@@ -1,0 +1,2 @@
+com.lanyang.cloud.framework.log.aspect.LogAspect
+com.lanyang.cloud.framework.log.service.AsyncLogService
