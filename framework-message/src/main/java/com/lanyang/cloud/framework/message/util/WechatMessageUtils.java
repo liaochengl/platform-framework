@@ -4,15 +4,17 @@ import com.lanyang.cloud.framework.http.util.HttpUtils;
 import com.lanyang.cloud.framework.message.config.WechatMessageConfig;
 import com.lanyang.cloud.framework.message.constant.RedisCacheConstant;
 import com.lanyang.cloud.framework.message.constant.WechatMessageConstant;
-import com.lanyang.cloud.framework.message.domain.dto.WechatAccessTokenResponseDTO;
-import com.lanyang.cloud.framework.message.domain.dto.WechatMessageDTO;
-import com.lanyang.cloud.framework.message.domain.dto.WechatMessageResponseDTO;
-import com.lanyang.cloud.framework.message.domain.vo.WechatMessageVO;
+import com.lanyang.cloud.framework.message.domain.wechat.miniprogram.SubscribeMessageParam;
+import com.lanyang.cloud.framework.message.domain.wechat.response.WechatAccessTokenResponseDTO;
+import com.lanyang.cloud.framework.message.domain.wechat.response.WechatMessageResponseDTO;
+import com.lanyang.cloud.framework.message.domain.wechat.response.WechatSubscribeMessageDTO;
+import com.lanyang.cloud.framework.message.domain.wechat.response.WechatTemplateMessageDTO;
+import com.lanyang.cloud.framework.message.domain.wechat.serviceaccount.TemplateMessageParam;
 import com.lanyang.cloud.framework.message.exception.MessageException;
 import com.lanyang.cloud.framework.redis.service.RedisUtils;
 import com.lanyang.framework.common.utils.JsonUtils;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
@@ -28,33 +30,27 @@ import java.util.concurrent.TimeUnit;
  * @des
  */
 @Component
+@RequiredArgsConstructor
 public class WechatMessageUtils {
 
-//    private static final String WECHAT_SERVER = "";
-//
-//    private static final String TEMPLATE_MESSAGE_URL = "";
-//
-//    private static final String SUBSCRIBE_MESSAGE_URL = "";
-
-    @Autowired
-    private HttpUtils httpUtils;
-    @Autowired
-    private RedisUtils redisService;
-    @Autowired
-    private WechatMessageConfig wechatMessageConfig;
+    private final HttpUtils httpUtils;
+    private final RedisUtils redisService;
+    private final WechatMessageConfig wechatMessageConfig;
 
     /**
      * 发送模板消息
+     * 目前已知可以用于微信服务号
+     * <a href="https://developers.weixin.qq.com/doc/service/api/notify/template/api_sendtemplatemessage.html"/>
      * @param message
      * @return
      */
-    public String sendTemplateMessage(WechatMessageVO message) {
+    public String sendTemplateMessage(TemplateMessageParam message) {
 
         String accessToken = this.getAccessToken();
 
         String url = String.format(wechatMessageConfig.getServer() + wechatMessageConfig.getTemplateMessageUrl(), accessToken);
 
-        WechatMessageDTO messageDTO = this.buildMessage(message);
+        WechatTemplateMessageDTO messageDTO = this.buildTemplateMessage(message);
         ResponseEntity<String> responseEntity = httpUtils.post(url, null, messageDTO, String.class);
         WechatMessageResponseDTO messageResponse = JsonUtils.formatJson2Bean(responseEntity.getBody(), WechatMessageResponseDTO.class);
         if(!WechatMessageConstant.message_success.equals(messageResponse.getErrcode())){
@@ -69,14 +65,14 @@ public class WechatMessageUtils {
      * @param message
      * @return
      */
-    public String sendSubscribeMessage(WechatMessageVO message) {
+    public String sendSubscribeMessage(SubscribeMessageParam message) {
 
 
         String accessToken = this.getAccessToken();
 
         String url = String.format(wechatMessageConfig.getServer() + wechatMessageConfig.getSubscribeMessageUrl(), accessToken);
 
-        WechatMessageDTO messageDTO = this.buildMessage(message);
+        WechatSubscribeMessageDTO messageDTO = this.buildSubscribeMessage(message);
         ResponseEntity<String> responseEntity = httpUtils.post(url, null, messageDTO, String.class);
         WechatMessageResponseDTO messageResponse = JsonUtils.formatJson2Bean(responseEntity.getBody(), WechatMessageResponseDTO.class);
         if(!WechatMessageConstant.message_success.equals(messageResponse.getErrcode())){
@@ -145,9 +141,9 @@ public class WechatMessageUtils {
      * @param message
      * @return
      */
-    private WechatMessageDTO buildMessage(WechatMessageVO message){
+    private WechatSubscribeMessageDTO buildSubscribeMessage(SubscribeMessageParam message){
 
-        WechatMessageDTO wechatMessageDTO = new WechatMessageDTO();
+        WechatSubscribeMessageDTO wechatMessageDTO = new WechatSubscribeMessageDTO();
         wechatMessageDTO.setTouser(message.getTargetUser());
         wechatMessageDTO.setTemplate_id(message.getTemplateId());
 
@@ -164,6 +160,35 @@ public class WechatMessageUtils {
         //跳转配置
         wechatMessageDTO.setPage(message.getPage());
         wechatMessageDTO.setMiniprogram_state(message.getMiniProgramState());
+
+        return wechatMessageDTO;
+    }
+    private WechatTemplateMessageDTO buildTemplateMessage(TemplateMessageParam message){
+
+        WechatTemplateMessageDTO wechatMessageDTO = new WechatTemplateMessageDTO();
+        wechatMessageDTO.setTouser(message.getTargetUser());
+        wechatMessageDTO.setTemplate_id(message.getTemplateId());
+
+        //模板参数按照微信的格式要求组装
+        Map<String, Map<String, Object>> data = new HashMap<>();
+        Set<Map.Entry<String, Object>> entries = message.getData().entrySet();
+        for (Map.Entry<String, Object> entry : entries) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("value", entry.getValue());
+            data.put(entry.getKey(), item);
+        }
+        wechatMessageDTO.setData(data);
+
+        //跳转配置小程序页面
+        if(StringUtils.isNotBlank(message.getPage())){
+            Map<String, String> miniProgram = new HashMap<>();
+            miniProgram.put("appid", message.getAppId());
+            miniProgram.put("pagepath", message.getPage());
+            wechatMessageDTO.setMiniprogram(miniProgram);
+        }
+
+        //跳转配置
+        wechatMessageDTO.setUrl(message.getUrl());
 
         return wechatMessageDTO;
     }
