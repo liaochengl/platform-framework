@@ -6,9 +6,13 @@ import com.alipay.v3.api.AlipayTradeApi;
 import com.alipay.v3.api.AlipayTradeFastpayRefundApi;
 import com.alipay.v3.util.model.AlipayConfig;
 import com.lanyang.cloud.framework.pay.exception.PayException;
+import com.lanyang.cloud.framework.pay.handler.AliNotifyHandler;
+import com.lanyang.cloud.framework.pay.strategy.AliPayStrategy;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 
 /**
  * @author lanyang
@@ -17,6 +21,8 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableConfigurationProperties({AliPayInitProperties.class, AliPayCreditDepositProperties.class})
+@ConditionalOnProperty(prefix = "alipay.pay", value = "enabled", havingValue = "true")
+@Import({AliPayStrategy.class, AliNotifyHandler.class})
 public class AliPayInitConfig {
 
     @Bean

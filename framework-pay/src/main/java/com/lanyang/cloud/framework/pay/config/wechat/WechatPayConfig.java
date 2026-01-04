@@ -1,5 +1,8 @@
 package com.lanyang.cloud.framework.pay.config.wechat;
 
+import com.lanyang.cloud.framework.pay.handler.WechatNotifyHandler;
+import com.lanyang.cloud.framework.pay.service.WechatTransferService;
+import com.lanyang.cloud.framework.pay.strategy.WechatPayStrategy;
 import com.wechat.pay.java.core.Config;
 import com.wechat.pay.java.core.RSAPublicKeyConfig;
 import com.wechat.pay.java.core.notification.NotificationConfig;
@@ -7,9 +10,11 @@ import com.wechat.pay.java.core.notification.NotificationParser;
 import com.wechat.pay.java.core.notification.RSAPublicKeyNotificationConfig;
 import com.wechat.pay.java.service.payments.jsapi.JsapiServiceExtension;
 import com.wechat.pay.java.service.refund.RefundService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 
 /**
  * @author lanyang
@@ -18,6 +23,8 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableConfigurationProperties(WechatPayProperties.class)
+@ConditionalOnProperty(prefix = "wechat.pay", value = "enabled", havingValue = "true")
+@Import({WechatNotifyHandler.class, WechatPayStrategy.class, WechatTransferService.class})
 public class WechatPayConfig {
 
     /**
